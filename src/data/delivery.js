@@ -12,7 +12,7 @@ export function deliveryZone(pin, settings = DEFAULT_SETTINGS) {
   if (!/^[1-9][0-9]{5}$/.test(p)) return 'invalid'
   const prefix = p.slice(0, 3)
   const n = Number(prefix)
-  if (d.areas.some(([a, b]) => n >= a && n <= b)) return d.zoneA.includes(prefix) ? 'A' : 'B'
+  if (d.areas.some((a) => n >= Number(a.from) && n <= Number(a.to))) return d.zoneA.includes(prefix) ? 'A' : 'B'
   return d.zoneCEnabled ? 'C' : 'soon'
 }
 
@@ -43,8 +43,9 @@ export function packingFor(lines, settings = DEFAULT_SETTINGS) {
 /**
  * Works out the cart totals.
  * lines: [{ price, weight, qty, packingType }]   method: 'home' | 'pickup'
+ * discount: wholesale discount in ₹   noFree: true for wholesale (no free delivery)
  */
-export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS }) {
+export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS, discount = 0, noFree = false }) {
   const d = settings.delivery
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0)
   const weight = lines.reduce((s, l) => s + l.weight * l.qty, 0)
@@ -53,7 +54,7 @@ export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS
   const deliverable = method === 'pickup' || ['A', 'B', 'C'].includes(zone)
 
   // free delivery: big enough order AND a pincode on the free list (home delivery only)
-  const freeArea = method === 'home' && deliverable && d.freePrefixes.includes(String(pin).slice(0, 3))
+  const freeArea = !noFree && method === 'home' && deliverable && d.freePrefixes.includes(String(pin).slice(0, 3))
   const free = freeArea && subtotal >= d.freeMin
   const toFree = freeArea && !free ? d.freeMin - subtotal : 0
 
@@ -71,6 +72,7 @@ export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS
     deliveryPacking, // null = we can't work it out yet (no pincode / area not served)
     free,
     toFree,
-    total: subtotal + (deliveryPacking || 0),
+    discount,
+    total: subtotal - discount + (deliveryPacking || 0),
   }
 }

@@ -297,7 +297,7 @@ export function createStory(canvas, o) {
 
     if (sc.motion === 'earrings') {
       // two halves of the same picture, each hanging from its own hook so they swing separately
-      sc.pivots.forEach(([u, v], k) => {
+      ;[sc.pivotL || [0.21, 0.93], sc.pivotR || [0.775, 0.92]].forEach(([u, v], k) => {
         const hang = new THREE.Group()
         const px = (u - 0.5) * S
         const py = (v - 0.5) * S
@@ -425,7 +425,20 @@ export function createStory(canvas, o) {
   canvas.addEventListener('pointerleave', onLeave)
 
   // ---------- the loop ----------
-  const clock = new THREE.Clock(false)
+  // simple frame timer (THREE.Clock is deprecated in newer three.js)
+  const clock = {
+    last: 0,
+    start() {
+      this.last = performance.now()
+    },
+    stop() {},
+    getDelta() {
+      const t = performance.now()
+      const d = (t - this.last) / 1000
+      this.last = t
+      return d
+    },
+  }
   let raf = 0
   let running = false
   let target = 0 // story position from the scroll (0 … N-1)

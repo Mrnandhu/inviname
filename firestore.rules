@@ -1,0 +1,139 @@
+rules_version = '2';
+// firestore.rules — who can read and write what in the database.
+// Paste into Firebase Console → Firestore → Rules → Publish (or deploy with: npx firebase-tools deploy --only firestore:rules).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    // You are an admin if a document with your user ID exists in the "admins" collection.
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function counterPath() { return /databases/$(database)/documents/counters/orders; }
+
+    // ---------- admins: you can only check your own entry; nobody can add admins from the website ----------
+    match /admins/{uid} {
+      allow read: if isMe(uid);
+      allow write: if false;
+    }
+
+    // ---------- shop: everyone sees active categories, products and reviews; only admins change them ----------
+    match /categories/{id} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /products/{id} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /reviews/{id} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ---------- website texts and shop settings ----------
+    match /content/site {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/public {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // private settings (blood-sample mailing address): admins, and customers who placed a blood-art order
+    match /settings/private {
+      allow read: if isAdmin() || (signedIn() && exists(/databases/$(database)/documents/bloodAccess/$(request.auth.uid)));
+      allow write: if isAdmin();
+    }
+    match /settings/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---------- customers ----------
+    match /users/{uid} {
+      allow read: if isMe(uid) || isAdmin();
+      allow create, update: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+    }
+    match /carts/{uid} {
+      allow read, write: if isMe(uid);
+    }
+
+    // ---------- order numbers: INV-1001, INV-1002 … (can only go up by one, together with a new order) ----------
+    match /counters/orders {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        || (signedIn() && request.resource.data.keys().hasOnly(['next']) && request.resource.data.next == 1002
+            && existsAfter(/databases/$(database)/documents/orders/INV-1001));
+      allow update: if isAdmin()
+        || (signedIn() && request.resource.data.keys().hasOnly(['next'])
+            && request.resource.data.next == resource.data.next + 1
+            && existsAfter(/databases/$(database)/documents/orders/$('INV-' + string(resource.data.next))));
+      allow delete: if false;
+    }
+
+    // ---------- orders ----------
+    match /orders/{orderId} {
+      // A customer creates their own order with the next number, status "Payment pending verification"
+      // (or "Confirmed (pay at pickup)"), and no payments. Prices can't be fully checked here, so the
+      // admin page recalculates every order from the products before it is marked paid.
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.number == getAfter(counterPath()).data.next - 1
+        && orderId == 'INV-' + string(request.resource.data.number)
+        && request.resource.data.status in ['Payment pending verification', 'Confirmed (pay at pickup)']
+        && request.resource.data.payments.size() == 0
+        && request.resource.data.tracking == ''
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'customer', 'items', 'method', 'payWhere', 'pincode', 'kind', 'hasBlood',
+             'totals', 'status', 'payments', 'history', 'tracking', 'createdAt', 'updatedAt', 'number']);
+
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+
+      // Customers may only ADD one unverified payment (their UTR). They can never change status, prices or totals.
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'updatedAt'])
+            && request.resource.data.payments.size() == resource.data.payments.size() + 1
+            && request.resource.data.payments[0:resource.data.payments.size()] == resource.data.payments
+            && request.resource.data.payments[resource.data.payments.size()].verified == false
+            && request.resource.data.payments[resource.data.payments.size()].utr.matches('^[0-9]{12}$'));
+
+      allow delete: if isAdmin();
+    }
+
+    // Marks that this customer has a blood-art order (lets them read the sample mailing address).
+    match /bloodAccess/{uid} {
+      allow read: if isMe(uid) || isAdmin();
+      allow create, update: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['orderId'])
+        && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.uid == uid
+        && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.hasBlood == true;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- wholesale applications: one per customer; only admins approve ----------
+    match /wholesaleApplications/{uid} {
+      allow read: if isMe(uid) || isAdmin();
+      allow create: if isMe(uid) && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['shopName', 'ownerName', 'phone', 'city', 'gst', 'status', 'createdAt']);
+      // a rejected shop may apply again (back to "pending"); everything else is the admin's job
+      allow update: if isAdmin() || (isMe(uid) && resource.data.status == 'rejected' && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['shopName', 'ownerName', 'phone', 'city', 'gst', 'status', 'createdAt']));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- waitlist: anyone can add their number, only admins can read it ----------
+    match /waitlist/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['phone', 'pincode', 'createdAt'])
+        && request.resource.data.phone is string && request.resource.data.phone.matches('^[6-9][0-9]{9}$')
+        && request.resource.data.pincode is string && request.resource.data.pincode.matches('^[1-9][0-9]{5}$');
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

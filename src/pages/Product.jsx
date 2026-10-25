@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCatalog, formatINR, makingText } from '../data/catalog.js'
 import { addToCart } from '../data/cart.js'
+import { uploadsReady } from '../data/upload.js'
+import CustomDetails, { EMPTY_CUSTOM, needsPhoto } from '../components/shop/CustomDetails.jsx'
 import { deliveryArea } from '../data/delivery.js'
 import { useSettings } from '../data/settings.js'
 import { waLink } from '../config/site.js'
@@ -54,12 +56,26 @@ function ProductView({ p, cat }) {
     return [...same, ...more].slice(0, 4)
   }, [cat, p])
 
-  const add = () => {
-    addToCart({ product: p, variant, colour, qty })
+  const [custom, setCustom] = useState(EMPTY_CUSTOM)
+  const [customErr, setCustomErr] = useState('')
+  const isCustom = p.type === 'custom'
+  // made-to-order pieces that need a photo can only be added once a photo is uploaded (when uploads are set up)
+  const ok = async () => {
+    if (!isCustom || !needsPhoto(p) || custom.photos.length || !(await uploadsReady())) return true
+    setCustomErr('Please add your photo first.')
+    document.querySelector('fieldset')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return false
+  }
+  const add = async () => {
+    if (!(await ok())) return
+    addToCart({ product: p, variant, colour, qty, custom: isCustom ? custom : null })
+    if (isCustom) setCustom(EMPTY_CUSTOM)
+    setCustomErr('')
     setToast(true)
   }
-  const buyNow = () => {
-    addToCart({ product: p, variant, colour, qty })
+  const buyNow = async () => {
+    if (!(await ok())) return
+    addToCart({ product: p, variant, colour, qty, custom: isCustom ? custom : null })
     navigate('/cart')
   }
 
@@ -124,6 +140,8 @@ function ProductView({ p, cat }) {
               </div>
             )}
 
+            {isCustom && <CustomDetails product={p} value={custom} onChange={(v) => { setCustom(v); setCustomErr('') }} error={customErr} />}
+
             {/* quantity + buttons */}
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <div className="qty" role="group" aria-label="Quantity">
@@ -164,7 +182,7 @@ function ProductView({ p, cat }) {
                 <p className="mt-2 text-muted">
                   {isBlood
                     ? 'After you order, we show you exactly how to dry and post your sample. Samples are handled with gloves and used only for your order.'
-                    : 'After you order, you share your photo, names, date and colour choices with us. We confirm everything before we start.'}
+                    : 'Add your photo and details in “Your details” above. After you order, we confirm everything with you on WhatsApp before we start.'}
                 </p>
               </div>
             )}

@@ -4,6 +4,8 @@
 // motion: how the piece moves — cube | swing | earrings | turn | spin | locket | float | clock | finale | burst
 // pivot: where a hanging piece is held (0–1 across, 0–1 up the image)
 // size: optional, makes one piece a little bigger or smaller (1 = normal)
+// These are the DEFAULTS. The admin panel (Admin → Website → Home 3D story) can change every text, link and photo,
+// and hide scenes; saved changes live in the database (content/site).
 
 export const STORY = [
   {
@@ -39,7 +41,8 @@ export const STORY = [
     id: 'earrings',
     motion: 'earrings',
     img: 'earrings',
-    pivots: [[0.21, 0.93], [0.775, 0.92]],
+    pivotL: [0.21, 0.93],
+    pivotR: [0.775, 0.92],
     label: 'Wear nature · Feel unique',
     title: 'Earrings',
     text: 'Lightweight, handcrafted with real flowers.',
@@ -110,5 +113,12 @@ export const STORY = [
   },
 ]
 
-/** Image URL for a scene; phones get the smaller file. */
-export const storyImage = (name, small) => `/images/${name}${small ? '-sm' : ''}.webp`
+/** Image URL for a scene; phones get the smaller file. Accepts a file name ('rose') or a full photo URL (from the admin panel). */
+export function storyImage(name, small) {
+  if (!name) return ''
+  if (name.includes('/')) {
+    if (name.includes('res.cloudinary.com/') && name.includes('/upload/')) return name.replace('/upload/', `/upload/f_auto,q_auto,w_${small ? 600 : 1200}/`)
+    return name
+  }
+  return `/images/${name}${small ? '-sm' : ''}.webp`
+}

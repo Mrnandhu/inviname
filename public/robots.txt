@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /checkout
+Disallow: /cart
+Disallow: /my-orders
+Disallow: /order/
+
+Sitemap: https://inviname.in/sitemap.xml

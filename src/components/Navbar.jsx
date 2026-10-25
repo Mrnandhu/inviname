@@ -2,15 +2,18 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import Logo from './Logo.jsx'
-import { IconSearch, IconCart, IconUser, IconMenu, IconClose } from './Icons.jsx'
+import { IconSearch, IconCart, IconMenu, IconClose } from './Icons.jsx'
 import { NAV } from '../config/site.js'
 import { useCart, cartCount as countItems } from '../data/cart.js'
+import { useAuth, logOut } from '../data/auth.js'
+import AccountMenu from './AccountMenu.jsx'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
   const cartCount = countItems(useCart())
+  const { user, isAdmin } = useAuth()
 
   // Close the phone menu after moving to another page (curly braces: an effect must not return a value)
   useEffect(() => {
@@ -51,9 +54,7 @@ export default function Navbar() {
               <span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose px-1 text-[0.65rem] font-semibold text-white">{cartCount}</span>
             )}
           </Link>
-          <Link to="/login" className="hidden h-11 w-11 place-items-center rounded-full text-cream transition hover:text-gold sm:grid" aria-label="Account">
-            <IconUser />
-          </Link>
+          <AccountMenu />
           <button
             type="button"
             className="grid h-11 w-11 place-items-center rounded-full text-cream md:hidden"
@@ -68,14 +69,22 @@ export default function Navbar() {
       </div>
 
       {/* Phone menu */}
-      <div id="mobile-menu" className={`overflow-hidden border-plum-line transition-[max-height] duration-300 md:hidden ${open ? 'max-h-[28rem] border-t' : 'max-h-0'}`}>
+      <div id="mobile-menu" className={`overflow-hidden border-plum-line transition-[max-height] duration-300 md:hidden ${open ? 'max-h-[36rem] border-t' : 'max-h-0'}`}>
         <nav className="container-page flex flex-col py-3" aria-label="Mobile">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `border-b border-plum-line/60 py-3.5 font-serif text-xl ${isActive ? 'text-gold' : 'text-blush'}`}>
               {n.label}
             </NavLink>
           ))}
-          <NavLink to="/login" className="py-3.5 font-serif text-xl text-blush">My account</NavLink>
+          {user ? (
+            <>
+              <NavLink to="/my-orders" className={({ isActive }) => `border-b border-plum-line/60 py-3.5 font-serif text-xl ${isActive ? 'text-gold' : 'text-blush'}`}>My orders</NavLink>
+              {isAdmin && <NavLink to="/admin" className="border-b border-plum-line/60 py-3.5 font-serif text-xl text-blush">Admin panel</NavLink>}
+              <button type="button" onClick={() => logOut()} className="py-3.5 text-left font-serif text-xl text-muted">Log out <span className="font-sans text-xs">({user.email})</span></button>
+            </>
+          ) : (
+            <NavLink to={`/login?next=${encodeURIComponent(pathname)}`} className="py-3.5 font-serif text-xl text-blush">Log in / Sign up</NavLink>
+          )}
         </nav>
       </div>
     </header>

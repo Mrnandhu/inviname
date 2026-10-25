@@ -1,13 +1,10 @@
-// src/pages/Policy.jsx — placeholder for the four policy pages (written in Phase 8)
-import PageIntro from '../components/PageIntro.jsx'
-
-const TITLES = {
-  shipping: 'Shipping Policy',
-  returns: 'Returns & Replacement',
-  privacy: 'Privacy Policy',
-  terms: 'Terms & Conditions',
-}
+// src/pages/Policy.jsx — Shipping, Returns & Replacement, Privacy and Terms (text from Admin → Website → Policies)
+import { useContent } from '../data/content.js'
+import usePageTitle from '../lib/usePageTitle.js'
+import ContentPage from '../components/ContentPage.jsx'
 
 export default function Policy({ kind }) {
-  return <PageIntro label="Policies" title={TITLES[kind]} phase={8} />
+  const p = useContent().policies[kind]
+  usePageTitle(p.title)
+  return <ContentPage label="Policies" title={p.title} body={p.body} />
 }

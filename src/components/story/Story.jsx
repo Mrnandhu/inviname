@@ -2,17 +2,17 @@
 // The stage (canvas + text) stays pinned on screen while the visitor scrolls through the section;
 // GSAP ScrollTrigger turns the scroll into the story position (0–9) and gently snaps to each scene.
 // The section is exactly 10 scenes long, so the normal page continues right after the finale.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { STORY, storyImage } from '../../config/story.js'
+import { storyImage } from '../../config/story.js'
+import { useContent, loadContent, contentLoaded } from '../../data/content.js'
 import StoryPanels from './StoryPanels.jsx'
 import StoryFallback from './StoryFallback.jsx'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const N = STORY.length
 const INTRO_KEY = 'inv-intro-seen'
 
 function canRun3D() {
@@ -34,6 +34,18 @@ export default function Story() {
 }
 
 function Story3D({ onFail }) {
+  // scenes come from the website content (Admin → Website → Home 3D story); hidden scenes are skipped
+  const content = useContent()
+  const scenes = useMemo(() => content.story.filter((s) => !s.hidden), [content])
+  const N = scenes.length
+  const sceneKey = scenes.map((s) => `${s.id}:${s.img || ''}`).join('|')
+  const [contentReady, setContentReady] = useState(contentLoaded)
+  useEffect(() => {
+    if (contentReady) return
+    const t = setTimeout(() => setContentReady(true), 1500) // never wait long for saved texts
+    loadContent().then(() => setContentReady(true))
+    return () => clearTimeout(t)
+  }, [contentReady])
   const root = useRef(null)
   const canvasRef = useRef(null)
   const labelRef = useRef(null)
@@ -84,25 +96,31 @@ function Story3D({ onFail }) {
     })
     trigger.current = st
     return () => st.kill()
-  }, [])
+  }, [N])
 
-  // ---- load the 3D engine (separate download) ----
+  // ---- the intro lasts at most 2 seconds, whatever happens ----
+  const minIntro = useRef(null)
+  minIntro.current ||= new Promise((r) => setTimeout(r, firstVisit ? 1100 : 0))
   useEffect(() => {
-    let dead = false
-    let api = null
-    const lite = isLite()
-    // the intro lasts at most 2 seconds, whatever happens
-    const maxIntro = setTimeout(() => setVeil(false), firstVisit ? 2000 : 1200)
-    const minIntro = new Promise((r) => setTimeout(r, firstVisit ? 1100 : 0))
+    const t = setTimeout(() => setVeil(false), firstVisit ? 2000 : 1200)
     try {
       localStorage.setItem(INTRO_KEY, '1')
     } catch {}
+    return () => clearTimeout(t)
+  }, [firstVisit])
+
+  // ---- load the 3D engine (separate download) ----
+  useEffect(() => {
+    if (!contentReady) return
+    let dead = false
+    let api = null
+    const lite = isLite()
 
     import('../../three/story/engine.js')
       .then(({ createStory }) => {
         if (dead || !canvasRef.current) return
         api = createStory(canvasRef.current, {
-          scenes: STORY,
+          scenes,
           lite,
           imageUrl: (name) => storyImage(name, lite),
           onSelect: (link) => link && nav.current(link),
@@ -113,7 +131,7 @@ function Story3D({ onFail }) {
             if (on) el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`
           },
           onReady: () =>
-            minIntro.then(() => {
+            minIntro.current.then(() => {
               if (dead) return
               setReady(true)
               setVeil(false)
@@ -123,17 +141,16 @@ function Story3D({ onFail }) {
         api.jump(pos.current)
         api.start()
         // preload the remaining pictures quietly so later scenes are instant
-        STORY.forEach((s) => s.img && (new Image().src = storyImage(s.img, lite)))
+        scenes.forEach((s) => s.img && (new Image().src = storyImage(s.img, lite)))
       })
       .catch(() => !dead && fail.current())
 
     return () => {
       dead = true
-      clearTimeout(maxIntro)
       api?.dispose()
       engine.current = null
     }
-  }, [firstVisit])
+  }, [contentReady, sceneKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- pause the 3D when the story is off screen (saves battery) ----
   useEffect(() => {
@@ -178,7 +195,7 @@ function Story3D({ onFail }) {
     const st = trigger.current
     if (!st) return
     window.scrollTo({ top: st.start + ((st.end - st.start) * i) / (N - 1), behavior: 'smooth' })
-  }, [])
+  }, [N])
 
   return (
     <section ref={root} className="story relative -mt-[72px]" style={{ '--scenes': N - 1 }} aria-label="Inviname Arts collection story">
@@ -211,7 +228,7 @@ function Story3D({ onFail }) {
         {/* blends the stage into the page below */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-plum" />
 
-        <StoryPanels scenes={STORY} idx={idx} entered={entered} onDot={goTo} />
+        <StoryPanels scenes={scenes} idx={idx} entered={entered} onDot={goTo} />
 
         <span ref={labelRef} className="pointer-events-none absolute left-0 top-0 z-20 rounded-full border border-gold/50 bg-plum/70 px-4 py-1.5 text-xs uppercase tracking-[0.25em] text-gold opacity-0 backdrop-blur transition-opacity duration-300">
           View

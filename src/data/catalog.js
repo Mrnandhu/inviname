@@ -1,19 +1,18 @@
 // src/data/catalog.js — the ONE place every page gets categories, products, prices and photos from.
-// Now it reads the sample data; in Phase 4 only this file changes to read from Firestore, and the
-// admin panel (Phase 6) edits that same data. Pages never hard-code products.
-import { useEffect, useState } from 'react'
+// It reads the online database (Firestore "categories" and "products"), which the admin panel edits.
+// While testing on your computer before the data is uploaded, it shows the sample products instead.
+import { createStore } from '../lib/store.js'
 import { SAMPLE_CATEGORIES, SAMPLE_PRODUCTS } from './sampleCatalog.js'
-
-let cache = null
-let loading = null
+import { fb } from '../firebase/index.js'
 
 function prepare(categories, products) {
   const cats = categories.filter((c) => c.active).map((c) => ({ ...c })).sort((a, b) => a.order - b.order)
   const catBySlug = Object.fromEntries(cats.map((c) => [c.slug, c]))
   const prods = products
-    .filter((p) => p.active && catBySlug[p.category])
+    .map((p) => ({ images: [], colours: [], variants: [], stock: 0, makingDays: 3, createdAt: '', ...p }))
+    .filter((p) => p.active && catBySlug[p.category] && p.variants.length)
     .map((p) => {
-      const prices = p.variants.map((x) => x.price)
+      const prices = p.variants.map((x) => Number(x.price) || 0)
       return {
         ...p,
         categoryName: catBySlug[p.category].name,
@@ -29,21 +28,38 @@ function prepare(categories, products) {
   return { categories: cats, products: prods, catBySlug }
 }
 
-/** Loads the catalog once and keeps it for the whole visit. */
-export function loadCatalog() {
-  if (cache) return Promise.resolve(cache)
-  loading ||= Promise.resolve().then(() => (cache = prepare(SAMPLE_CATEGORIES, SAMPLE_PRODUCTS)))
-  return loading
+async function fromDatabase() {
+  const f = await fb()
+  if (!f) return null
+  const { F, db } = f
+  const active = (name) => F.getDocs(F.query(F.collection(db, name), F.where('active', '==', true)))
+  const [cs, ps] = await Promise.all([active('categories'), active('products')])
+  return {
+    categories: cs.docs.map((d) => ({ ...d.data(), id: d.id })),
+    products: ps.docs.map((d) => ({ ...d.data(), id: d.id })),
+  }
 }
 
+const store = createStore(async () => {
+  let data = null
+  try {
+    data = await fromDatabase()
+  } catch (e) {
+    console.warn('Could not load products from the database:', e?.code || e)
+  }
+  // Sample products are only used on your computer (npm run dev) until the real data is uploaded.
+  const useSample = !data || (!data.categories.length && import.meta.env.DEV)
+  const c = useSample ? prepare(SAMPLE_CATEGORIES, SAMPLE_PRODUCTS) : prepare(data.categories, data.products)
+  c.source = useSample ? 'sample' : 'database'
+  return c
+})
+
+/** Loads the catalog once and keeps it for the whole visit. */
+export const loadCatalog = store.load
+/** Load again (the admin panel calls this after saving changes). */
+export const refreshCatalog = store.refresh
 /** React hook: returns { categories, products, catBySlug } or null while loading. */
-export function useCatalog() {
-  const [data, setData] = useState(cache)
-  useEffect(() => {
-    if (!cache) loadCatalog().then(setData)
-  }, [])
-  return data
-}
+export const useCatalog = store.use
 
 /** ₹1,299 style prices */
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })

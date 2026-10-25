@@ -1,6 +1,7 @@
-// src/App.jsx — every page of the site. Pages are placeholders for now and get built phase by phase.
+// src/App.jsx — every page of the site. Checkout and My Orders need the customer to be logged in.
 import { Routes, Route } from 'react-router'
 import Layout from './components/Layout.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
 import Home from './pages/Home.jsx'
 import Shop from './pages/Shop.jsx'
 import Product from './pages/Product.jsx'
@@ -16,6 +17,7 @@ import Contact from './pages/Contact.jsx'
 import Policy from './pages/Policy.jsx'
 import Admin from './pages/Admin.jsx'
 import NotFound from './pages/NotFound.jsx'
+import Order from './pages/Order.jsx'
 
 export default function App() {
   return (
@@ -27,8 +29,9 @@ export default function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/my-orders" element={<MyOrders />} />
+        <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
+        <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
+        <Route path="/order/:id" element={<RequireAuth><Order /></RequireAuth>} />
         <Route path="/custom-orders" element={<CustomOrders />} />
         <Route path="/wholesale" element={<Wholesale />} />
         <Route path="/about" element={<About />} />

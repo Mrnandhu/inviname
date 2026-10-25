@@ -1,12 +1,13 @@
 // src/components/story/StoryFallback.jsx — the story without 3D, for phones/computers with
 // "reduce motion" switched on or without WebGL: each product picture with its text, fading in.
 import { Link } from 'react-router'
-import { STORY, storyImage } from '../../config/story.js'
+import { storyImage } from '../../config/story.js'
+import { useContent } from '../../data/content.js'
 import { IconArrow } from '../Icons.jsx'
 import Reveal from '../home/Reveal.jsx'
 
 export default function StoryFallback() {
-  const items = STORY.filter((s) => s.img && s.motion !== 'finale')
+  const items = useContent().story.filter((s) => s.img && s.motion !== 'finale' && !s.hidden)
   return (
     <section className="hero-still relative -mt-[72px] pt-[72px]" aria-label="Inviname Arts collection">
       {items.map((sc, i) => {
