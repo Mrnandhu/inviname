@@ -4,12 +4,13 @@ import { Link, NavLink, useLocation } from 'react-router'
 import Logo from './Logo.jsx'
 import { IconSearch, IconCart, IconUser, IconMenu, IconClose } from './Icons.jsx'
 import { NAV } from '../config/site.js'
+import { useCart, cartCount as countItems } from '../data/cart.js'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
-  const cartCount = 0 // connected to the cart in Phase 3
+  const cartCount = countItems(useCart())
 
   // Close the phone menu after moving to another page (curly braces: an effect must not return a value)
   useEffect(() => {

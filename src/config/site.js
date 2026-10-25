@@ -12,17 +12,7 @@ export const SITE = {
 export const waLink = (text = 'Hi Inviname Arts, I would like to know more about your resin art.') =>
   `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(text)}`
 
-// The 8 product categories (slug is used in URLs like /shop?category=keychains)
-export const CATEGORIES = [
-  { slug: 'keychains', name: 'Keychains', line: 'Carry memories' },
-  { slug: 'earrings', name: 'Earrings', line: 'Wear nature' },
-  { slug: 'lockets-chains', name: 'Lockets & Chains', line: 'Close to your heart' },
-  { slug: 'bangles', name: 'Bangles', line: 'Everyday elegance' },
-  { slug: 'combos', name: 'Jewellery Combos', line: 'Perfect together' },
-  { slug: 'photo-art', name: 'Photo Resin Art', line: 'Your moments' },
-  { slug: 'wall-clocks', name: 'Wall Clocks', line: 'Timeless beauty' },
-  { slug: 'blood-art', name: 'Blood Art Jewellery', line: 'Truly yours' },
-]
+// Categories and products live in src/data (the catalog), so the admin panel can edit them.
 
 // Main navigation (`end: true` = only highlighted on exactly that page, needed for Home "/")
 export const NAV = [
