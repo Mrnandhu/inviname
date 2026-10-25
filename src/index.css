@@ -1,0 +1,63 @@
+/* src/index.css — Tailwind v4 + the Inviname Arts design tokens */
+@import "tailwindcss";
+
+/* Brand colours and fonts. Use them as classes: bg-plum, text-blush, bg-rose, text-gold, font-serif … */
+@theme {
+  --color-plum: #1E1219;        /* page background */
+  --color-plum-card: #2A1922;   /* cards, slightly lighter */
+  --color-plum-line: #3D2632;   /* borders and dividers */
+  --color-blush: #F3CFC6;       /* headings */
+  --color-rose: #B76E79;        /* buttons */
+  --color-rose-dark: #9C5A65;   /* button hover */
+  --color-gold: #D4A857;        /* accents and icons */
+  --color-cream: #EDE3DF;       /* body text */
+  --color-muted: #B9A9A5;       /* secondary text */
+
+  --font-serif: "Cormorant Garamond", "Georgia", serif;
+  --font-sans: "Jost", "Segoe UI", system-ui, sans-serif;
+
+  --shadow-glow: 0 0 0 1px rgb(212 168 87 / 0.15), 0 10px 40px -12px rgb(212 168 87 / 0.35);
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+  body {
+    @apply bg-plum font-sans text-cream antialiased;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1, h2, h3 { @apply font-serif text-blush; line-height: 1.08; font-weight: 600; }
+  ::selection { background: rgb(183 110 121 / 0.45); color: #fff; }
+  :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; border-radius: 6px; }
+}
+
+/* Shared classes. In Tailwind v4 they are declared with @utility so they can be used
+   like any other class (and combined with hover:, sm: and so on). */
+
+/* Small letter-spaced uppercase label, e.g. "REAL FLOWERS · TIMELESS ART" */
+@utility label {
+  @apply font-sans text-xs font-medium uppercase tracking-[0.28em] text-gold;
+}
+
+/* Rounded pill buttons */
+@utility btn {
+  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-7 text-sm font-medium tracking-wide transition duration-300;
+}
+@utility btn-rose {
+  @apply btn bg-rose text-white shadow-[0_8px_30px_-10px_rgb(183_110_121_/_0.8)] hover:bg-rose-dark;
+}
+@utility btn-ghost {
+  @apply btn border border-blush/40 text-blush hover:border-gold hover:text-gold;
+}
+
+@utility card {
+  @apply rounded-3xl border border-plum-line bg-plum-card;
+}
+@utility container-page {
+  @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
