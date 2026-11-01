@@ -106,6 +106,11 @@ service cloud.firestore {
         && (!('payLater' in t) || money(t.payLater))
         && (!('payAtPickup' in t) || money(t.payAtPickup));
     }
+    // earlier payments must stay exactly as they were (a customer has at most 6 payments)
+    function keepsOld(n, o) {
+      return (o.size() < 1 || n[0] == o[0]) && (o.size() < 2 || n[1] == o[1]) && (o.size() < 3 || n[2] == o[2])
+        && (o.size() < 4 || n[3] == o[3]) && (o.size() < 5 || n[4] == o[4]) && (o.size() < 6 || n[5] == o[5]);
+    }
     // the one new payment a customer adds: their UTR, the amount, and optionally a Cloudinary screenshot
     function validPayment(p, o) {
       return p is map
@@ -114,7 +119,7 @@ service cloud.firestore {
         && p.amount is number && p.amount > 0 && p.amount <= o.totals.total
         && p.utr is string && p.utr.matches('^[0-9]{12}$')
         && p.verified == false
-        && (!('screenshot' in p) || photoLink(p.screenshot))
+        && photoLink(p.get('screenshot', ''))
         && str(p.at, 40);
     }
 
@@ -151,7 +156,7 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'updatedAt'])
             && resource.data.payments.size() < 6
             && request.resource.data.payments.size() == resource.data.payments.size() + 1
-            && request.resource.data.payments[0:resource.data.payments.size()] == resource.data.payments
+            && keepsOld(request.resource.data.payments, resource.data.payments)
             && validPayment(request.resource.data.payments[resource.data.payments.size()], resource.data)
             && str(request.resource.data.updatedAt, 40));
 

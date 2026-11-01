@@ -58,7 +58,8 @@ export default function UpiPay({ amount, orderId, stage, onSubmit }) {
     setBusy('send')
     try {
       await onSubmit({ utr: utr.trim(), screenshot: shot })
-    } catch {
+    } catch (e) {
+      console.error('UTR save failed:', e)
       setErr('Could not save. Please check your internet and try again.')
     } finally {
       setBusy('')
