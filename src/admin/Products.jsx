@@ -5,6 +5,7 @@ import { list, put, remove, newId, slugify } from './db.js'
 import { Card, Field, Area, Num, Toggle, Select, SaveButton, ConfirmButton, ImagesField } from './ui.jsx'
 import { refreshCatalog, formatINR, img } from '../data/catalog.js'
 import { IconPlus, IconClose } from '../components/Icons.jsx'
+import ColourPicker from './ColourPicker.jsx'
 
 const BLANK = {
   name: '', slug: '', category: '', description: '', care: '', images: [],
@@ -148,7 +149,7 @@ function Editor({ product, cats, all, done }) {
           ))}
         </div>
         <button type="button" onClick={() => set('variants', [...p.variants, { name: '', price: p.variants[0]?.price || 0, wholesale: p.variants[0]?.wholesale ?? 0, weight: p.variants[0]?.weight || 50 }])} className="btn-ghost mt-3 min-h-10 px-4"><IconPlus className="h-4 w-4" /> Add size / option</button>
-        <Field label="Colours (comma separated)" value={p.colours.join(', ')} onChange={(e) => set('colours', e.target.value.split(','))} placeholder="Pink, Lilac, White, Pink & gold" className="mt-4" />
+        <ColourPicker value={p.colours} onChange={(v) => set('colours', v)} />
       </Card>
 
       <Card title="Stock, packing and display">

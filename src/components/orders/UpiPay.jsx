@@ -1,5 +1,5 @@
-// src/components/orders/UpiPay.jsx — pay by UPI: QR code (scan with any UPI app), a "Pay with UPI app" button
-// on phones, then the customer types the 12-digit UTR (transaction ID) and can add a screenshot.
+// src/components/orders/UpiPay.jsx — pay by UPI: QR code (scan with any UPI app); on phones "Save QR" (scan it from the
+// gallery in PhonePe/GPay), "Copy UPI ID" and, if switched on in Admin → Settings, a "Pay with UPI app" button; then the customer types the 12-digit UTR (transaction ID) and can add a screenshot.
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { formatINR } from '../../data/catalog.js'
@@ -11,7 +11,7 @@ import { IconWhatsApp } from '../Icons.jsx'
 
 export default function UpiPay({ amount, orderId, stage, onSubmit }) {
   const s = useSettings()
-  const { upiId, upiName } = s.payment
+  const { upiId, upiName, appButton } = s.payment
   const note = stage === 'balance' ? `${orderId} balance` : orderId
   const link = upiId ? upiLink({ upiId, upiName, amount, note }) : ''
   const [qr, setQr] = useState('')
@@ -20,6 +20,7 @@ export default function UpiPay({ amount, orderId, stage, onSubmit }) {
   const [canUpload, setCanUpload] = useState(false)
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
+  const [copied, setCopied] = useState(false)
   const isPhone = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent)
 
   useEffect(() => {
@@ -51,6 +52,15 @@ export default function UpiPay({ amount, orderId, stage, onSubmit }) {
       setBusy('')
     }
   }
+  async function copyUpi() {
+    try {
+      await navigator.clipboard.writeText(upiId)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+
   async function submit(e) {
     e.preventDefault()
     if (!isUtr(utr)) return setErr('The UTR / transaction ID has 12 digits. You can find it in your UPI app under this payment.')
@@ -75,11 +85,32 @@ export default function UpiPay({ amount, orderId, stage, onSubmit }) {
           {qr ? <img src={qr} alt={`UPI QR code to pay ${formatINR(amount)} to ${upiName}`} className="aspect-square w-full" /> : <div className="skeleton aspect-square w-full rounded-xl" />}
         </div>
         <div className="space-y-2 text-sm text-muted">
-          <p><span className="text-cream">1.</span> Scan the QR with GPay, PhonePe, Paytm or any UPI app{isPhone ? ', or tap the button below' : ''}.</p>
-          <p><span className="text-cream">2.</span> Check the name <span className="text-cream">{upiName}</span> and the amount <span className="text-cream">{formatINR(amount)}</span>, then pay.</p>
+          {isPhone ? (
+            <>
+              <p><span className="text-cream">1.</span> Tap <span className="text-cream">Save QR</span>, then open PhonePe, GPay or Paytm → <span className="text-cream">Scan</span> → choose the QR from your gallery (photo icon). Or pay to the UPI ID below.</p>
+              <p><span className="text-cream">2.</span> Check the name <span className="text-cream">{upiName}</span> and the amount <span className="text-cream">{formatINR(amount)}</span>{note ? <> (note: {note})</> : null}, then pay.</p>
+            </>
+          ) : (
+            <>
+              <p><span className="text-cream">1.</span> Scan the QR with GPay, PhonePe, Paytm or any UPI app on your phone.</p>
+              <p><span className="text-cream">2.</span> Check the name <span className="text-cream">{upiName}</span> and the amount <span className="text-cream">{formatINR(amount)}</span>, then pay.</p>
+            </>
+          )}
           <p><span className="text-cream">3.</span> Enter the 12-digit UTR / transaction ID below.</p>
           <p className="break-all text-xs">UPI ID: <span className="text-gold">{upiId}</span></p>
-          {isPhone && <a href={link} className="btn-gold mt-2 w-full sm:w-auto">Pay with UPI app</a>}
+          {isPhone && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {appButton && <a href={link} className="btn-gold w-full">Pay with UPI app</a>}
+              {qr && (
+                <a href={qr} download={`inviname-${orderId}-pay-${amount}.png`} className="btn-ghost min-h-11 flex-1 px-4">
+                  Save QR
+                </a>
+              )}
+              <button type="button" onClick={copyUpi} className="btn-ghost min-h-11 flex-1 px-4">
+                {copied ? 'Copied ✓' : 'Copy UPI ID'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <form onSubmit={submit} className="mt-6 space-y-3 border-t border-plum-line pt-5">

@@ -47,6 +47,12 @@ export default function Settings() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="UPI ID" value={s.payment.upiId} onChange={(e) => at(['payment', 'upiId'], e.target.value)} placeholder="yourname@okaxis" hint="Customers pay to this. Double-check it!" />
           <Field label="Name shown in UPI apps" value={s.payment.upiName} onChange={(e) => at(['payment', 'upiName'], e.target.value)} />
+          <Toggle
+            label="Show “Pay with UPI app” button on phones"
+            checked={!!s.payment.appButton}
+            onChange={(v) => at(['payment', 'appButton'], v)}
+            hint="Turn on only with a business UPI ID (PhonePe Business, Google Pay for Business, Paytm for Business). With a personal UPI ID, apps often decline it. Customers can always save the QR and scan it from their gallery."
+          />
         </div>
       </Card>
 

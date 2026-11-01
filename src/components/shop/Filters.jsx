@@ -2,12 +2,9 @@
 import { formatINR } from '../../data/catalog.js'
 import { IconCheck } from '../Icons.jsx'
 
-// colour names → swatch colours ("Pink & gold" becomes a two-colour swatch)
-const SWATCH = { pink: '#f2a7ba', lilac: '#c7a6e6', white: '#f6efe6', blue: '#8fb3e6', gold: '#d4a857', red: '#b8323f', clear: 'rgba(255,255,255,0.15)' }
-export function swatch(name) {
-  const parts = name.toLowerCase().split('&').map((s) => SWATCH[s.trim()] || '#b9a9a5')
-  return parts.length > 1 ? `linear-gradient(135deg, ${parts[0]} 50%, ${parts[1]} 50%)` : parts[0]
-}
+// colour names → swatch colours ("Pink & gold" becomes a two-colour swatch); the palette lives in data/colours.js
+import { swatch } from '../../data/colours.js'
+export { swatch }
 
 function Section({ title, children }) {
   return (

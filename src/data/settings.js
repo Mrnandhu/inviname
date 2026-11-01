@@ -46,6 +46,9 @@ export const DEFAULT_SETTINGS = {
   payment: {
     upiId: '', // e.g. yourname@okicici — shown as a QR code at checkout
     upiName: 'Inviname Arts',
+    // "Pay with UPI app" button on phones. UPI apps often block these buttons for PERSONAL UPI IDs
+    // ("declined for security reasons"), so keep it off until you use a business/merchant UPI ID.
+    appButton: false,
   },
   wholesale: { minPieces: 50, discountAt: 100, discountPct: 5, maxDesigns: 5 },
   // free photo uploads (cloudinary.com → Settings → Upload → an "unsigned" upload preset)
