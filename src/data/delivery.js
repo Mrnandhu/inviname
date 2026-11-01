@@ -22,6 +22,14 @@ export function deliveryArea(pin, settings) {
   return z === 'A' || z === 'B' || z === 'C' ? 'ok' : z
 }
 
+/** The free-delivery area (Pothavaram / within 10 km / within 30 km) a pincode belongs to, or null. */
+export function freeTierFor(pin, settings = DEFAULT_SETTINGS) {
+  const p = String(pin || '').trim()
+  if (!/^[1-9][0-9]{5}$/.test(p)) return null
+  const tiers = (settings.delivery.freeTiers || []).filter((t) => String(t.pins || '').split(/[\s,]+/).includes(p))
+  return tiers.sort((a, b) => Number(a.min) - Number(b.min))[0] || null
+}
+
 /** Delivery charge for a parcel weight (grams) in a zone. */
 export function rateFor(weight, zone, settings = DEFAULT_SETTINGS) {
   const { rates, extraPer500 } = settings.delivery
@@ -46,17 +54,17 @@ export function packingFor(lines, settings = DEFAULT_SETTINGS) {
  * discount: wholesale discount in ₹   noFree: true for wholesale (no free delivery)
  */
 export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS, discount = 0, noFree = false }) {
-  const d = settings.delivery
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0)
   const weight = lines.reduce((s, l) => s + l.weight * l.qty, 0)
   const packing = packingFor(lines, settings)
   const zone = method === 'pickup' ? null : deliveryZone(pin, settings)
   const deliverable = method === 'pickup' || ['A', 'B', 'C'].includes(zone)
 
-  // free delivery: big enough order AND a pincode on the free list (home delivery only)
-  const freeArea = !noFree && method === 'home' && deliverable && d.freePrefixes.includes(String(pin).slice(0, 3))
-  const free = freeArea && subtotal >= d.freeMin
-  const toFree = freeArea && !free ? d.freeMin - subtotal : 0
+  // free delivery: a pincode in one of the free areas AND the order is big enough for that area (home delivery only)
+  const tier = !noFree && method === 'home' && deliverable ? freeTierFor(pin, settings) : null
+  const freeMin = tier ? Number(tier.min) || 0 : 0
+  const free = !!tier && subtotal >= freeMin
+  const toFree = tier && !free ? freeMin - subtotal : 0
 
   let delivery = 0
   if (method === 'home' && deliverable) delivery = rateFor(weight, zone, settings)
@@ -72,6 +80,8 @@ export function quote({ lines, pin, method = 'home', settings = DEFAULT_SETTINGS
     deliveryPacking, // null = we can't work it out yet (no pincode / area not served)
     free,
     toFree,
+    freeMin, // the minimum for this pincode's free-delivery area (0 = no free delivery here)
+    freeArea: tier?.name || '',
     discount,
     total: subtotal - discount + (deliveryPacking || 0),
   }

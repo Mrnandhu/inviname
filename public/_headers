@@ -13,3 +13,12 @@
 
 /images/*
   Cache-Control: public, max-age=2592000
+
+/sw.js
+  Cache-Control: no-cache
+
+/*.webmanifest
+  Cache-Control: no-cache
+
+/admin/*
+  X-Robots-Tag: noindex

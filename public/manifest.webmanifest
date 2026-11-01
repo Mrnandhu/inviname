@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Inviname Arts",
+  "short_name": "Inviname",
+  "description": "Handmade resin art with real flowers – keychains, earrings, lockets, bangles, photo art and wall clocks.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1E1219",
+  "theme_color": "#1E1219",
+  "lang": "en-IN",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

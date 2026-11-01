@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "in.inviname.app",
+      "sha256_cert_fingerprints": [
+        "PASTE_FINGERPRINT_FROM_PWABUILDER_signing-key-info.txt",
+        "PASTE_SHA256_FROM_PLAY_CONSOLE_App_integrity_App_signing_key"
+      ]
+    }
+  }
+]

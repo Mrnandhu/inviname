@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { fb, isConfigured } from '../firebase/index.js'
 import { attachCartToAccount, detachCart } from './cart.js'
 
-let state = { user: null, ready: !isConfigured, isAdmin: false, adminChecked: false, disabled: !isConfigured }
+let state = { user: null, ready: !isConfigured, isAdmin: false, isOwner: false, adminChecked: false, disabled: !isConfigured }
 const subs = new Set()
 const set = (patch) => {
   state = { ...state, ...patch }
@@ -20,7 +20,7 @@ function start() {
       f.Au.onAuthStateChanged(f.auth, async (u) => {
         if (!u) {
           detachCart()
-          set({ user: null, ready: true, isAdmin: false, adminChecked: true })
+          set({ user: null, ready: true, isAdmin: false, isOwner: false, adminChecked: true })
           return
         }
         const user = { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0], photo: u.photoURL }
@@ -30,9 +30,9 @@ function start() {
         attachCartToAccount(u.uid).catch(() => {})
         try {
           const snap = await f.F.getDoc(f.F.doc(f.db, 'admins', u.uid))
-          set({ isAdmin: snap.exists(), adminChecked: true })
+          set({ isAdmin: snap.exists(), isOwner: snap.exists() && snap.data().role === 'owner', adminChecked: true })
         } catch {
-          set({ isAdmin: false, adminChecked: true })
+          set({ isAdmin: false, isOwner: false, adminChecked: true })
         }
       })
     })

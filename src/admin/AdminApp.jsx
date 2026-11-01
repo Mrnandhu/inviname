@@ -1,14 +1,19 @@
 // src/admin/AdminApp.jsx — the admin panel: a menu on the left (a scrolling row on phones) and the chosen section.
 // Address: /admin/<section>, e.g. /admin/orders, /admin/products, /admin/website, /admin/settings
 import { lazy, Suspense, useEffect } from 'react'
+import InstallAdminApp from './InstallAdminApp.jsx'
 import { Link, useLocation } from 'react-router'
 import Dashboard from './Dashboard.jsx'
 import { logOut } from '../data/auth.js'
 
-// For safety the admin is logged out after 30 minutes without any activity (e.g. a laptop left open).
+// For safety the admin is logged out after 30 minutes without any activity in a browser (e.g. a laptop left open).
+// Not in the installed admin app on your own phones.
 const IDLE_MS = 30 * 60 * 1000
 function useIdleLogout() {
   useEffect(() => {
+    // the installed "Inviname Admin" app on your own phones stays logged in; browsers still log out when idle
+    const installedApp = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
+    if (installedApp) return
     let timer
     const reset = () => {
       clearTimeout(timer)
@@ -34,11 +39,20 @@ const SECTIONS = [
   ['reviews', 'Reviews', lazy(() => import('./Reviews.jsx'))],
   ['wholesale', 'Wholesale', lazy(() => import('./WholesaleApps.jsx'))],
   ['waitlist', 'Waitlist', lazy(() => import('./Waitlist.jsx'))],
+  ['team', 'Team', lazy(() => import('./Team.jsx'))],
   ['setup', 'Setup', lazy(() => import('./Setup.jsx'))],
 ]
 
 export default function AdminApp() {
   useIdleLogout()
+  // while in the admin panel, Chrome's "Install app" installs "Inviname Admin" (not the customer app)
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]')
+    if (!link) return
+    const before = link.getAttribute('href')
+    link.setAttribute('href', '/admin.webmanifest')
+    return () => link.setAttribute('href', before)
+  }, [])
   const { pathname } = useLocation()
   const key = pathname.split('/')[2] || ''
   const [, title, Section] = SECTIONS.find((s) => s[0] === key) || SECTIONS[0]
@@ -63,6 +77,7 @@ export default function AdminApp() {
         </nav>
         <main className="min-w-0">
           <h1 className="mb-6 text-4xl sm:text-5xl">{title}</h1>
+          {key === '' && <InstallAdminApp />}
           <Suspense fallback={<div className="skeleton h-64 rounded-3xl" />}>
             <Section />
           </Suspense>

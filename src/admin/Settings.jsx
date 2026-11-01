@@ -6,8 +6,6 @@ import { Card, Field, Area, Num, Toggle, SaveButton } from './ui.jsx'
 import { loadSettings, refreshSettings, DEFAULT_THEME, applySettings } from '../data/settings.js'
 import { IconPlus, IconClose } from '../components/Icons.jsx'
 
-const list = (v) => v.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean)
-
 export default function Settings() {
   const [s, setS] = useState(null)
   const [priv, setPriv] = useState({ bloodSampleAddress: '' })
@@ -103,8 +101,22 @@ export default function Settings() {
           <Num label="Packing: small items only" value={d.packing.small} onChange={(v) => at(['delivery', 'packing', 'small'], v)} />
           <Num label="Packing: any combo" value={d.packing.combo} onChange={(v) => at(['delivery', 'packing', 'combo'], v)} />
           <Num label="Packing: only big pieces" value={d.packing.big} onChange={(v) => at(['delivery', 'packing', 'big'], v)} />
-          <Num label="Free delivery from ₹" value={d.freeMin} onChange={(v) => at(['delivery', 'freeMin'], v)} />
-          <Field label="Free delivery pincodes (first 3 digits)" value={d.freePrefixes.join(', ')} onChange={(e) => at(['delivery', 'freePrefixes'], list(e.target.value))} className="sm:col-span-2" />
+        </div>
+        <div className="mt-6">
+          <p className="text-sm text-cream">Free delivery by distance</p>
+          <p className="text-xs text-muted">
+            Type the full 6-digit pincodes of each area, separated by commas. Orders to these pincodes get free delivery and packing
+            from the amount you set. Other pincodes pay normal charges. Wholesale orders never get free delivery.
+          </p>
+          <div className="mt-3 space-y-3">
+            {d.freeTiers.map((t, i) => (
+              <div key={i} className="grid gap-3 rounded-2xl border border-plum-line p-3 sm:grid-cols-[12rem_9rem_1fr]">
+                <Field label="Area" value={t.name} onChange={(e) => at(['delivery', 'freeTiers', i, 'name'], e.target.value)} />
+                <Num label="Free from ₹" value={t.min} onChange={(v) => at(['delivery', 'freeTiers', i, 'min'], v)} />
+                <Field label="Pincodes" value={t.pins} placeholder="534176, 534199" onChange={(e) => at(['delivery', 'freeTiers', i, 'pins'], e.target.value.replace(/[^0-9,\s]/g, ''))} />
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 

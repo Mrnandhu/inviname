@@ -17,6 +17,8 @@ import Contact from './pages/Contact.jsx'
 import Policy from './pages/Policy.jsx'
 import Admin from './pages/Admin.jsx'
 import NotFound from './pages/NotFound.jsx'
+import JoinAdmin from './pages/JoinAdmin.jsx'
+import DeleteAccount from './pages/DeleteAccount.jsx'
 import Order from './pages/Order.jsx'
 
 export default function App() {
@@ -40,7 +42,9 @@ export default function App() {
         <Route path="/returns-and-replacement" element={<Policy kind="returns" />} />
         <Route path="/privacy-policy" element={<Policy kind="privacy" />} />
         <Route path="/terms" element={<Policy kind="terms" />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/admin/*" element={<Admin />} />
+        <Route path="/join-admin/:code" element={<RequireAuth><JoinAdmin /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

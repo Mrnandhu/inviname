@@ -167,9 +167,9 @@ export default function Cart() {
               </dl>
               {q.toFree > 0 && (
                 <div className="mt-4 rounded-2xl bg-gold/10 p-3 text-sm text-gold">
-                  Add {formatINR(q.toFree)} more for free delivery
+                  Add {formatINR(q.toFree)} more for free delivery{q.freeArea ? ` (${q.freeArea})` : ''}
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-plum-line">
-                    <div className="h-full rounded-full bg-gold transition-all duration-500" style={{ width: `${Math.min(100, (q.subtotal / settings.delivery.freeMin) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-gold transition-all duration-500" style={{ width: `${Math.min(100, (q.subtotal / (q.freeMin || 1)) * 100)}%` }} />
                   </div>
                 </div>
               )}

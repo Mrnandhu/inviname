@@ -25,8 +25,13 @@ export const DEFAULT_SETTINGS = {
     ],
     extraPer500: { A: 20, B: 35, C: 60 }, // each extra 500 g above the last slab
     packing: { small: 20, combo: 40, big: 0 }, // per order; big pieces include packing in their price
-    freeMin: 1000, // free delivery from this subtotal…
-    freePrefixes: ['533', '534', '520', '521', '530', '531'], // …for pincodes starting with these
+    // Free delivery by distance from Pothavaram. Each area is a list of full 6-digit pincodes (edit in Admin → Settings).
+    // A pincode in more than one area gets the lowest minimum. Wholesale orders never get free delivery.
+    freeTiers: [
+      { name: 'Pothavaram', min: 100, pins: '534176' },
+      { name: 'Within 10 km', min: 500, pins: '' },
+      { name: 'Within 30 km', min: 2000, pins: '' },
+    ],
   },
   pickup: {
     place: 'Pothavaram, Andhra Pradesh',

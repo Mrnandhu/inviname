@@ -19,6 +19,7 @@ const HELP = [
   { to: '/returns-and-replacement', label: 'Returns & Replacement' },
   { to: '/privacy-policy', label: 'Privacy Policy' },
   { to: '/terms', label: 'Terms' },
+  { to: '/delete-account', label: 'Delete account' },
 ]
 
 // Footer line from Admin → Website; WhatsApp, Instagram and email from Admin → Settings.

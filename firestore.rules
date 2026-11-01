@@ -19,10 +19,51 @@ service cloud.firestore {
     // customer photos and payment screenshots may only be images uploaded to Cloudinary
     function photoLink(v) { return v == '' || (v is string && v.size() <= 400 && v.matches('^https://res[.]cloudinary[.]com/[A-Za-z0-9_./,:%-]+$')); }
 
-    // ---------- admins: you can only check your own entry; nobody can add admins from the website ----------
+    // ---------- admin team ----------
+    // admins/{uid}: role "owner" (you, added by hand in Firebase Console) or "admin" (joined with an invite link).
+    function isOwner() {
+      return signedIn() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'owner';
+    }
+    function invitePath(code) { return /databases/$(database)/documents/adminInvites/$(code); }
+    // an invite link works once, for 15 minutes after the owner created it
+    function inviteOpen(inv) { return inv.used == false && inv.createdAt + duration.value(15, 'm') > request.time; }
+
     match /admins/{uid} {
-      allow read: if isMe(uid);
-      allow write: if false;
+      allow get: if isMe(uid) || isOwner();
+      allow list: if isOwner();
+      // joining with a valid invite: becomes "admin" (never "owner") and the invite is used up in the same step
+      allow create: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['role', 'name', 'invite', 'addedAt'])
+        && request.resource.data.role == 'admin'
+        && str(request.resource.data.name, 60)
+        && request.resource.data.addedAt == request.time
+        && request.resource.data.invite is string
+        && inviteOpen(get(invitePath(request.resource.data.invite)).data)
+        && getAfter(invitePath(request.resource.data.invite)).data.usedBy == uid;
+      // only the owner removes admins (and can never remove the owner entry)
+      allow delete: if isOwner() && resource.data.get('role', '') != 'owner';
+      allow update: if false;
+    }
+
+    match /adminInvites/{code} {
+      // the invited person can open the invite only by its secret code (no browsing); the owner sees all
+      allow get: if isOwner() || (signedIn() && inviteOpen(resource.data));
+      allow list: if isOwner();
+      allow create: if isOwner()
+        && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt', 'used', 'usedBy'])
+        && str(request.resource.data.name, 60) && request.resource.data.name.size() >= 2
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.used == false && request.resource.data.usedBy == ''
+        && code.size() >= 32;
+      // using it: only marks it used, by the person who joins, while they are added as admin
+      allow update: if signedIn() && inviteOpen(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt'])
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == request.auth.uid
+        && request.resource.data.usedAt == request.time
+        && existsAfter(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow delete: if isOwner();
     }
 
     // ---------- shop: everyone sees active categories, products and reviews; only admins change them ----------
