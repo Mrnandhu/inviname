@@ -4,6 +4,7 @@ import { useSettings } from '../data/settings.js'
 import { waLink } from '../config/site.js'
 import usePageTitle from '../lib/usePageTitle.js'
 import { IconWhatsApp, IconInstagram, IconPin, IconClock } from '../components/Icons.jsx'
+import { safeHref } from '../lib/safeUrl.js'
 
 export default function Contact() {
   const p = useContent().pages.contact
@@ -22,7 +23,7 @@ export default function Contact() {
       <h1 className="mt-3 text-4xl sm:text-6xl">{p.title}</h1>
       <p className="mt-4 text-lg text-muted">{p.intro}</p>
       <ul className="mt-8 divide-y divide-plum-line rounded-3xl border border-plum-line bg-plum-card/60">
-        {rows.map(([Icon, label, value, href]) => (
+        {rows.map(([Icon, label, value, rawHref]) => { const href = safeHref(rawHref); return (
           <li key={label} className="flex items-center gap-4 p-5">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold/10 text-gold">{Icon ? <Icon className="h-5 w-5" /> : '@'}</span>
             <span className="min-w-0">
@@ -30,7 +31,7 @@ export default function Contact() {
               {href ? <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="break-all text-cream hover:text-gold">{value}</a> : <span className="text-cream">{value}</span>}
             </span>
           </li>
-        ))}
+        )})}
       </ul>
       <a href={waLink()} target="_blank" rel="noopener noreferrer" className="btn-rose shimmer mt-8"><IconWhatsApp className="h-5 w-5" /> Chat on WhatsApp</a>
     </section>

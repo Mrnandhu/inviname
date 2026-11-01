@@ -9,6 +9,7 @@ import { flowFor, afterFirstPayment, afterBalance, CANCELLED } from '../data/ord
 import { formatINR, img } from '../data/catalog.js'
 import { useSettings } from '../data/settings.js'
 import { IconWhatsApp, IconCheck } from '../components/Icons.jsx'
+import { safePhoto } from '../lib/safeUrl.js'
 
 const now = () => new Date().toISOString()
 
@@ -144,7 +145,7 @@ function OrderDetail({ o, products, back, onChange }) {
                 <p className="text-cream">
                   {p.stage === 'first' ? 'First payment' : p.stage === 'balance' ? 'Balance' : 'At pickup'} · <span className="text-gold">{formatINR(p.amount)}</span> · UTR <span className="font-mono tracking-wider">{p.utr}</span>
                 </p>
-                <p className="text-xs text-muted">{new Date(p.at).toLocaleString('en-IN')} {p.screenshot && <> · <a href={p.screenshot} target="_blank" rel="noopener noreferrer" className="text-gold underline">screenshot</a></>}</p>
+                <p className="text-xs text-muted">{new Date(p.at).toLocaleString('en-IN')} {safePhoto(p.screenshot) && <> · <a href={safePhoto(p.screenshot)} target="_blank" rel="noopener noreferrer" className="text-gold underline">screenshot</a></>}</p>
                 {p.verified ? (
                   <p className="mt-2 flex items-center gap-1 text-[#8fd19e]"><IconCheck className="h-4 w-4" /> Verified</p>
                 ) : (
@@ -202,7 +203,7 @@ function OrderDetail({ o, products, back, onChange }) {
                       {i.custom.notes && <p>Notes: {i.custom.notes}</p>}
                       {!!i.custom.photos?.length && (
                         <p className="flex flex-wrap gap-1.5">
-                          {i.custom.photos.map((u) => (
+                          {i.custom.photos.map(safePhoto).filter(Boolean).map((u) => (
                             <a key={u} href={u} target="_blank" rel="noopener noreferrer"><img src={img(u, true)} alt="Customer photo" className="h-12 w-12 rounded-lg object-cover" /></a>
                           ))}
                         </p>

@@ -5,6 +5,7 @@ import { IconWhatsApp, IconInstagram, IconPin } from './Icons.jsx'
 import { SITE, waLink } from '../config/site.js'
 import { useContent } from '../data/content.js'
 import { useSettings } from '../data/settings.js'
+import { safeUrl } from '../lib/safeUrl.js'
 
 const SHOP = [
   { to: '/shop', label: 'Shop' },
@@ -24,7 +25,7 @@ const HELP = [
 export default function Footer() {
   const tagline = useContent().footer.tagline
   const s = useSettings()
-  const instagram = s.contact.instagram
+  const instagram = safeUrl(s.contact.instagram, ['instagram.com'])
   return (
     <footer className="mt-24 border-t border-plum-line bg-[#180E14]">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">

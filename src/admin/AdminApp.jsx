@@ -1,8 +1,28 @@
 // src/admin/AdminApp.jsx — the admin panel: a menu on the left (a scrolling row on phones) and the chosen section.
 // Address: /admin/<section>, e.g. /admin/orders, /admin/products, /admin/website, /admin/settings
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Link, useLocation } from 'react-router'
 import Dashboard from './Dashboard.jsx'
+import { logOut } from '../data/auth.js'
+
+// For safety the admin is logged out after 30 minutes without any activity (e.g. a laptop left open).
+const IDLE_MS = 30 * 60 * 1000
+function useIdleLogout() {
+  useEffect(() => {
+    let timer
+    const reset = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => logOut().finally(() => location.assign('/login?next=/admin')), IDLE_MS)
+    }
+    const events = ['pointerdown', 'keydown', 'scroll', 'visibilitychange']
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }))
+    reset()
+    return () => {
+      clearTimeout(timer)
+      events.forEach((e) => window.removeEventListener(e, reset))
+    }
+  }, [])
+}
 
 const SECTIONS = [
   ['', 'Dashboard', Dashboard],
@@ -18,6 +38,7 @@ const SECTIONS = [
 ]
 
 export default function AdminApp() {
+  useIdleLogout()
   const { pathname } = useLocation()
   const key = pathname.split('/')[2] || ''
   const [, title, Section] = SECTIONS.find((s) => s[0] === key) || SECTIONS[0]

@@ -43,7 +43,7 @@ export default function Signup() {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (password.length < 6) return setError('Please use a password of at least 6 characters.')
+          if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return setError('Please use a password of at least 8 characters, with at least one letter and one number.')
           run('email', () => signUpWithEmail({ name, email, password }))
         }}
         className="space-y-4"

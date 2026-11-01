@@ -1,6 +1,7 @@
 rules_version = '2';
 // firestore.rules — who can read and write what in the database.
 // Paste into Firebase Console → Firestore → Rules → Publish (or deploy with: npx firebase-tools deploy --only firestore:rules).
+// Every field a customer can write is checked for type and size, so nobody can store huge, broken or harmful data.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -9,6 +10,14 @@ service cloud.firestore {
     // You are an admin if a document with your user ID exists in the "admins" collection.
     function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
     function counterPath() { return /databases/$(database)/documents/counters/orders; }
+
+    // ---- small checks used below ----
+    function str(v, max) { return v is string && v.size() <= max; }
+    function optStr(m, key, max) { return !(key in m) || str(m[key], max); }
+    function isPhone(v) { return v is string && v.matches('^[6-9][0-9]{9}$'); }
+    function money(v) { return v is number && v >= 0 && v <= 1000000; }
+    // customer photos and payment screenshots may only be images uploaded to Cloudinary
+    function photoLink(v) { return v == '' || (v is string && v.size() <= 400 && v.matches('^https://res[.]cloudinary[.]com/[A-Za-z0-9_./,:%-]+$')); }
 
     // ---------- admins: you can only check your own entry; nobody can add admins from the website ----------
     match /admins/{uid} {
@@ -52,11 +61,17 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isMe(uid) || isAdmin();
       allow create, update: if isMe(uid)
-        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'createdAt', 'updatedAt']);
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'createdAt', 'updatedAt'])
+        && optStr(request.resource.data, 'name', 80)
+        && optStr(request.resource.data, 'email', 120)
+        && (!('phone' in request.resource.data) || request.resource.data.phone == '' || isPhone(request.resource.data.phone));
       allow delete: if false;
     }
     match /carts/{uid} {
-      allow read, write: if isMe(uid);
+      allow read: if isMe(uid);
+      allow write: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['items', 'updatedAt'])
+        && request.resource.data.items is list && request.resource.data.items.size() <= 50;
     }
 
     // ---------- order numbers: INV-1001, INV-1002 … (can only go up by one, together with a new order) ----------
@@ -73,19 +88,60 @@ service cloud.firestore {
     }
 
     // ---------- orders ----------
+    function validCustomer(c) {
+      return c is map
+        && c.keys().hasOnly(['name', 'phone', 'address', 'landmark', 'city', 'pincode'])
+        && str(c.name, 80) && c.name.size() >= 2
+        && isPhone(c.phone)
+        && optStr(c, 'address', 300) && optStr(c, 'landmark', 120) && optStr(c, 'city', 80)
+        && (!('pincode' in c) || c.pincode == '' || (c.pincode is string && c.pincode.matches('^[1-9][0-9]{5}$')));
+    }
+    function validTotals(t) {
+      return t is map
+        && t.keys().hasOnly(['subtotal', 'discount', 'deliveryPacking', 'total', 'payNow', 'payLater', 'payAtPickup'])
+        && money(t.total) && money(t.payNow)
+        && (!('subtotal' in t) || money(t.subtotal))
+        && (!('discount' in t) || money(t.discount))
+        && (!('deliveryPacking' in t) || money(t.deliveryPacking))
+        && (!('payLater' in t) || money(t.payLater))
+        && (!('payAtPickup' in t) || money(t.payAtPickup));
+    }
+    // the one new payment a customer adds: their UTR, the amount, and optionally a Cloudinary screenshot
+    function validPayment(p, o) {
+      return p is map
+        && p.keys().hasOnly(['stage', 'amount', 'utr', 'screenshot', 'at', 'verified'])
+        && p.stage in ['first', 'balance']
+        && p.amount is number && p.amount > 0 && p.amount <= o.totals.total
+        && p.utr is string && p.utr.matches('^[0-9]{12}$')
+        && p.verified == false
+        && (!('screenshot' in p) || photoLink(p.screenshot))
+        && str(p.at, 40);
+    }
+
     match /orders/{orderId} {
       // A customer creates their own order with the next number, status "Payment pending verification"
       // (or "Confirmed (pay at pickup)"), and no payments. Prices can't be fully checked here, so the
       // admin page recalculates every order from the products before it is marked paid.
       allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'customer', 'items', 'method', 'payWhere', 'pincode', 'kind', 'hasBlood',
+             'totals', 'status', 'payments', 'history', 'tracking', 'createdAt', 'updatedAt', 'number'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.number == getAfter(counterPath()).data.next - 1
         && orderId == 'INV-' + string(request.resource.data.number)
         && request.resource.data.status in ['Payment pending verification', 'Confirmed (pay at pickup)']
         && request.resource.data.payments.size() == 0
         && request.resource.data.tracking == ''
-        && request.resource.data.keys().hasOnly(['uid', 'email', 'customer', 'items', 'method', 'payWhere', 'pincode', 'kind', 'hasBlood',
-             'totals', 'status', 'payments', 'history', 'tracking', 'createdAt', 'updatedAt', 'number']);
+        && str(request.resource.data.email, 120)
+        && validCustomer(request.resource.data.customer)
+        && request.resource.data.items is list && request.resource.data.items.size() >= 1 && request.resource.data.items.size() <= 40
+        && request.resource.data.method in ['home', 'pickup']
+        && request.resource.data.payWhere in ['online', 'pickup']
+        && request.resource.data.kind in ['retail', 'custom', 'blood', 'wholesale']
+        && request.resource.data.hasBlood is bool
+        && str(request.resource.data.pincode, 6)
+        && validTotals(request.resource.data.totals)
+        && request.resource.data.history is list && request.resource.data.history.size() == 1
+        && str(request.resource.data.createdAt, 40) && str(request.resource.data.updatedAt, 40);
 
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
 
@@ -93,10 +149,11 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'updatedAt'])
+            && resource.data.payments.size() < 6
             && request.resource.data.payments.size() == resource.data.payments.size() + 1
             && request.resource.data.payments[0:resource.data.payments.size()] == resource.data.payments
-            && request.resource.data.payments[resource.data.payments.size()].verified == false
-            && request.resource.data.payments[resource.data.payments.size()].utr.matches('^[0-9]{12}$'));
+            && validPayment(request.resource.data.payments[resource.data.payments.size()], resource.data)
+            && str(request.resource.data.updatedAt, 40));
 
       allow delete: if isAdmin();
     }
@@ -112,21 +169,27 @@ service cloud.firestore {
     }
 
     // ---------- wholesale applications: one per customer; only admins approve ----------
+    function validApplication(d) {
+      return d.keys().hasOnly(['shopName', 'ownerName', 'phone', 'city', 'gst', 'status', 'createdAt'])
+        && str(d.shopName, 100) && d.shopName.size() >= 2
+        && str(d.ownerName, 80) && isPhone(d.phone) && str(d.city, 80)
+        && optStr(d, 'gst', 20) && str(d.createdAt, 40);
+    }
     match /wholesaleApplications/{uid} {
       allow read: if isMe(uid) || isAdmin();
-      allow create: if isMe(uid) && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasOnly(['shopName', 'ownerName', 'phone', 'city', 'gst', 'status', 'createdAt']);
+      allow create: if isMe(uid) && request.resource.data.status == 'pending' && validApplication(request.resource.data);
       // a rejected shop may apply again (back to "pending"); everything else is the admin's job
       allow update: if isAdmin() || (isMe(uid) && resource.data.status == 'rejected' && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasOnly(['shopName', 'ownerName', 'phone', 'city', 'gst', 'status', 'createdAt']));
+        && validApplication(request.resource.data));
       allow delete: if isAdmin();
     }
 
     // ---------- waitlist: anyone can add their number, only admins can read it ----------
     match /waitlist/{id} {
       allow create: if request.resource.data.keys().hasOnly(['phone', 'pincode', 'createdAt'])
-        && request.resource.data.phone is string && request.resource.data.phone.matches('^[6-9][0-9]{9}$')
-        && request.resource.data.pincode is string && request.resource.data.pincode.matches('^[1-9][0-9]{5}$');
+        && isPhone(request.resource.data.phone)
+        && request.resource.data.pincode is string && request.resource.data.pincode.matches('^[1-9][0-9]{5}$')
+        && request.resource.data.createdAt == request.time;
       allow read, delete: if isAdmin();
       allow update: if false;
     }

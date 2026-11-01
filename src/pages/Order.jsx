@@ -12,6 +12,7 @@ import Timeline from '../components/orders/Timeline.jsx'
 import ArtImage from '../components/home/ArtImage.jsx'
 import { CustomSummary } from './Cart.jsx'
 import { IconCheck, IconWhatsApp, IconTruck, IconPin } from '../components/Icons.jsx'
+import { safeUrl } from '../lib/safeUrl.js'
 
 export default function Order() {
   const { id } = useParams()
@@ -135,7 +136,7 @@ export default function Order() {
             {o.tracking && (
               <p className="mt-5 flex flex-wrap items-center gap-2 border-t border-plum-line pt-4 text-sm">
                 <IconTruck className="h-5 w-5 text-gold" /> Tracking: <span className="font-medium text-cream">{o.tracking}</span>
-                <a href={settings.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Track on India Post</a>
+                <a href={safeUrl(settings.trackingUrl) || 'https://www.indiapost.gov.in'} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Track on India Post</a>
               </p>
             )}
           </div>
